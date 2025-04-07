@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import pagoRoutes from './routes/pago.routes.js';
 import { webhookPago } from './controllers/pago.controller.js';
 import adminRoutes from './controllers/admin.controller.js';
+import { errorHandler } from './middlewares/error.middleware.js';
 
 
 
@@ -23,6 +24,9 @@ app.set('trust proxy', 1);
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Middleware para manejar errores globalmente
+app.use(errorHandler);
 
 // Rutas
 app.use('/api/auth', authRoutes);

@@ -38,7 +38,7 @@ model Producto {
   creadoEn    DateTime @default(now())
 
   detalles DetallePedido[] // 🔁 Relación inversa agregada
-
+  actualizadoEn DateTime @updatedAt
   @@index([nombre])
 }
 

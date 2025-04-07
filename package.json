@@ -13,6 +13,7 @@
   "type": "module",
   "dependencies": {
     "@prisma/client": "^6.5.0",
+    "argon2": "^0.41.1",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "chart.js": "^4.4.8",

@@ -1,45 +1,96 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+// auth.controller.js
+import prisma from '../../config/prisma.js';
+import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
 
-dotenv.config();
-const prisma = new PrismaClient();
+// Puedes usar un .env para almacenar el secreto:
+const SECRET = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
 
+// Función para crear un nuevo usuario
 export const registrarUsuario = async (req, res) => {
-    try {
-        const { nombre, email, password } = req.body;
-        const salt = bcrypt.genSaltSync(10);
-        const hashedPassword = bcrypt.hashSync(password, salt);
+  const { nombre, email, password, direccion, telefono, tipo } = req.body;
 
-        const usuario = await prisma.usuario.create({
-            data: {
-                nombre,
-                email,
-                password: hashedPassword
-            }
-        });
+  if (!nombre || !email || !password) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios' });
+  }
 
-        res.json({ mensaje: "Usuario registrado", usuario });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+  try {
+    const usuarioExistente = await prisma.usuario.findUnique({
+      where: { email },
+    });
+
+    if (usuarioExistente) {
+      return res.status(400).json({ error: 'El usuario ya existe' });
     }
+
+    const hashedPassword = await argon2.hash(password);
+
+    const nuevoUsuario = await prisma.usuario.create({
+      data: {
+        nombre,
+        email,
+        password: hashedPassword,
+        direccion,
+        telefono,
+        tipo,
+      },
+    });
+
+    res.status(201).json({
+      id: nuevoUsuario.id,
+      nombre: nuevoUsuario.nombre,
+      email: nuevoUsuario.email,
+      direccion: nuevoUsuario.direccion,
+      telefono: nuevoUsuario.telefono,
+      tipo: nuevoUsuario.tipo,
+    });
+  } catch (error) {
+    console.error('Error al registrar usuario:', error);
+    res.status(500).json({ error: 'Error al registrar al usuario' });
+  }
 };
 
+// Función para iniciar sesión de usuario
 export const loginUsuario = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const usuario = await prisma.usuario.findUnique({ where: { email } });
+  const { email, password } = req.body;
 
-        if (!usuario) return res.status(400).json({ mensaje: "Usuario no encontrado" });
+  try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { email },
+    });
 
-        const esValido = bcrypt.compareSync(password, usuario.password);
-        if (!esValido) return res.status(401).json({ mensaje: "Contraseña incorrecta" });
-
-        const token = jwt.sign({ id: usuario.id, email: usuario.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-        res.json({ mensaje: "Login exitoso", token });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
+
+    const contraseñaValida = await argon2.verify(usuario.password, password);
+    if (!contraseñaValida) {
+      return res.status(400).json({ error: 'Contraseña incorrecta' });
+    }
+
+    const token = jwt.sign(
+      {
+        id: usuario.id,
+        email: usuario.email,
+        tipo: usuario.tipo,
+      },
+      SECRET,
+      { expiresIn: '2h' }
+    );
+
+    res.status(200).json({
+      token,
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email,
+        tipo: usuario.tipo,
+        direccion: usuario.direccion,
+        telefono: usuario.telefono,
+      }
+    });
+  } catch (error) {
+    console.error('Error al autenticar usuario:', error);
+    res.status(500).json({ error: 'Error al autenticar al usuario' });
+  }
 };
