@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  email     String   @unique
+  password  String
+  direccion String?
+  telefono  String?
+  tipo      String   @default("cliente")
+  creadoEn  DateTime @default(now())
+
+  pedidos Pedido[]
+
+  @@index([email]) // Índice para mejorar la búsqueda por email
+}
+
+model Producto {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  precio      Float
+  stock       Int
+  imagen      String?
+  creadoEn    DateTime @default(now())
+
+  detalles DetallePedido[] // 🔁 Relación inversa agregada
+
+  @@index([nombre])
+}
+
+model Pedido {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  total     Float
+  estado    String   @default("pendiente")
+  creadoEn  DateTime @default(now())
+
+  usuario  Usuario         @relation(fields: [usuarioId], references: [id])
+  detalles DetallePedido[]
+
+  @@index([usuarioId]) // Índice para optimizar la búsqueda de pedidos de un usuario
+}
+
+model DetallePedido {
+  id         Int   @id @default(autoincrement())
+  pedidoId   Int
+  productoId Int
+  cantidad   Int
+  precio     Float
+
+  pedido   Pedido   @relation(fields: [pedidoId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@index([pedidoId, productoId]) // Índice compuesto para consultas más rápidas
+}

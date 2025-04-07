@@ -1,0 +1,27 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_tienda
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tienda_online
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build: .
+    container_name: backend_tienda
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      DATABASE_URL: "mysql://root:root@mysql_tienda:3306/tienda_online"
+      JWT_SECRET: "secreto_super_seguro"
+    ports:
+      - "3000:3000"
+
+volumes:
+  mysql_data:
